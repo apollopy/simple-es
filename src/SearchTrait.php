@@ -28,6 +28,18 @@ trait SearchTrait
     }
 
     /**
+     * @param $func_name
+     * @param array $args
+     * @return \Shafa\SimpleES\Builder
+     */
+    private static function call_func($func_name, array $args = []) {
+        $instance = new static;
+        $builder = $instance->newSearch();
+
+        return call_user_func_array(array($builder, $func_name), $args);
+    }
+
+    /**
      * Add a basic where clause to the query.
      *
      * @param  string $column
@@ -36,9 +48,7 @@ trait SearchTrait
      */
     public static function searchWhere($column, $value)
     {
-        $instance = new static;
-        $builder = $instance->newSearch();
-        return call_user_func_array(array($builder, 'where'), func_get_args());
+        return self::call_func('where', func_get_args());
     }
 
     /**
@@ -50,9 +60,28 @@ trait SearchTrait
      */
     public static function searchWhereText($column, $value)
     {
-        $instance = new static;
-        $builder = $instance->newSearch();
-        return call_user_func_array(array($builder, 'whereText'), func_get_args());
+        return self::call_func('whereText', func_get_args());
+    }
+
+    /**
+     * Add a where between statement to the query.
+     *
+     * @param  string  $column
+     * @param  array   $values
+     * @return \Shafa\SimpleES\Builder
+     */
+    public static function searchWhereBetween($column, array $values)
+    {
+        return self::call_func('whereBetween', func_get_args());
+    }
+
+
+    /**
+     * @param \Elastica\Query\AbstractQuery $query
+     * @return \Shafa\SimpleES\Builder
+     */
+    public static function searchWhereRaw(\Elastica\Query\AbstractQuery $query) {
+        return self::call_func('whereRaw', func_get_args());
     }
 
     /**
@@ -63,9 +92,7 @@ trait SearchTrait
      */
     public static function searchOffset($value)
     {
-        $instance = new static;
-        $builder = $instance->newSearch();
-        return call_user_func_array(array($builder, 'offset'), func_get_args());
+        return self::call_func('offset', func_get_args());
     }
 
     /**
@@ -76,9 +103,7 @@ trait SearchTrait
      */
     public static function searchLimit($value)
     {
-        $instance = new static;
-        $builder = $instance->newSearch();
-        return call_user_func_array(array($builder, 'limit'), func_get_args());
+        return self::call_func('limit', func_get_args());
     }
 
     /**
@@ -90,9 +115,7 @@ trait SearchTrait
      */
     public static function searchOrderBy($column, $direction = 'asc')
     {
-        $instance = new static;
-        $builder = $instance->newSearch();
-        return call_user_func_array(array($builder, 'orderBy'), func_get_args());
+        return self::call_func('orderBy', func_get_args());
     }
 
 }

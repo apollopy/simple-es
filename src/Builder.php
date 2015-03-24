@@ -61,7 +61,7 @@ class Builder
      * @var array
      */
     protected $operators = array(
-        'term', 'text'
+        'term', 'text', 'range'
     );
 
     /**
@@ -126,6 +126,18 @@ class Builder
     }
 
     /**
+     * @param \Elastica\Query\AbstractQuery $query
+     * @param string $boolean
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function whereRaw(\Elastica\Query\AbstractQuery $query, $boolean = 'must') {
+        $operator = 'raw';
+        $this->wheres[] = compact('operator', 'query', 'boolean');
+
+        return $this;
+    }
+
+    /**
      * Add an "where text" clause to the query.
      *
      * @param $column
@@ -136,6 +148,19 @@ class Builder
     public function whereText($column, $value, $boolean = 'must')
     {
         return $this->where($column, 'text', $value, $boolean);
+    }
+
+    /**
+     * Add a where between statement to the query.
+     *
+     * @param  string  $column
+     * @param  array   $values
+     * @param  string  $boolean
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function whereBetween($column, array $values, $boolean = 'must')
+    {
+        return $this->where($column, 'range', $values, $boolean);
     }
 
     /**
@@ -224,6 +249,13 @@ class Builder
                 case 'text':
                     $_query = new \Elastica\Query\Match();
                     $_query->setFieldQuery($val['column'], $val['value']);
+                    break;
+                case 'range':
+                    $_query = new \Elastica\Query\Range();
+                    $_query->addField($val['column'], ['from' => $val['value'][0], 'to' => $val['value'][1]]);
+                    break;
+                case 'raw':
+                    $_query = $val['query'];
                     break;
                 default:
                     throw new \InvalidArgumentException(sprintf('$operator: %s unsupported', $val['operator']));
