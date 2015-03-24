@@ -88,7 +88,7 @@ class Builder
     /**
      * Get a new instance of the query builder.
      *
-     * @return static
+     * @return \Shafa\SimpleES\Builder
      */
     public function newSearch()
     {
@@ -98,29 +98,25 @@ class Builder
     /**
      * Add a basic where clause to the query.
      *
-     * @param  string  $column
-     * @param  string  $operator
-     * @param  mixed   $value
-     * @param  string  $boolean
-     * @return $this
-     *
-     * @throws \InvalidArgumentException
+     * @param  string $column
+     * @param  string $operator
+     * @param  mixed $value
+     * @param  string $boolean
+     * @return \Shafa\SimpleES\Builder
      */
     public function where($column, $operator = null, $value = null, $boolean = 'must')
     {
         // Here we will make some assumptions about the operator. If only 2 values are
         // passed to the method, we will assume that the operator is an equals sign
         // and keep going. Otherwise, we'll require the operator to be passed in.
-        if (func_num_args() == 2)
-        {
+        if (func_num_args() == 2) {
             list($value, $operator) = array($operator, 'term');
         }
 
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the 'term' operators and
         // we will set the operators to 'term' and set the values appropriately.
-        if ( ! in_array(strtolower($operator), $this->operators, true))
-        {
+        if (!in_array(strtolower($operator), $this->operators, true)) {
             list($value, $operator) = array($operator, 'term');
         }
 
@@ -135,7 +131,7 @@ class Builder
      * @param $column
      * @param $value
      * @param string $boolean
-     * @return $this
+     * @return \Shafa\SimpleES\Builder
      */
     public function whereText($column, $value, $boolean = 'must')
     {
@@ -145,8 +141,8 @@ class Builder
     /**
      * Set the "offset" value of the query.
      *
-     * @param  int  $value
-     * @return $this
+     * @param  int $value
+     * @return \Shafa\SimpleES\Builder
      */
     public function offset($value)
     {
@@ -158,8 +154,8 @@ class Builder
     /**
      * Set the "limit" value of the query.
      *
-     * @param  int  $value
-     * @return $this
+     * @param  int $value
+     * @return \Shafa\SimpleES\Builder
      */
     public function limit($value)
     {
@@ -171,9 +167,9 @@ class Builder
     /**
      * Add an "order by" clause to the query.
      *
-     * @param  string  $column
-     * @param  string  $direction
-     * @return $this
+     * @param  string $column
+     * @param  string $direction
+     * @return \Shafa\SimpleES\Builder
      */
     public function orderBy($column, $direction = 'asc')
     {
@@ -219,15 +215,18 @@ class Builder
     protected function compileWhere()
     {
         $queries = [];
-        foreach($this->wheres as $val) {
-            switch($val['operator']) {
+        foreach ($this->wheres as $val) {
+            switch ($val['operator']) {
                 case 'term':
                     $_query = new \Elastica\Query\Term();
                     $_query->setTerm($val['column'], $val['value']);
                     break;
                 case 'text':
-                    $_query = new \Elastica\Query\Text();
-                    $_query->setField($val['column'], $val['value']);
+                    $_query = new \Elastica\Query\Match();
+                    $_query->setFieldQuery($val['column'], $val['value']);
+                    break;
+                default:
+                    throw new \InvalidArgumentException(sprintf('$operator: %s unsupported', $val['operator']));
                     break;
             }
 
@@ -239,7 +238,7 @@ class Builder
         }
 
         $query = new \Elastica\Query\Bool();
-        foreach($queries as $val) {
+        foreach ($queries as $val) {
             if ($val['boolean'] == 'must') {
                 $query->addMust($val['query']);
             }
@@ -255,7 +254,7 @@ class Builder
      */
     protected function hasWhere()
     {
-        return (bool) count($this->wheres);
+        return (bool)count($this->wheres);
     }
 
 }
