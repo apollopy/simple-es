@@ -14,6 +14,12 @@ class Builder
     protected $client;
 
     /**
+     * The Eloquent Model Name
+     * @var string
+     */
+    protected $eloquent_name;
+
+    /**
      * The index name
      *
      * @var string
@@ -61,14 +67,15 @@ class Builder
      * @var array
      */
     protected $operators = array(
-        'term', 'text', 'range'
+        '=', '<', '>', '<=', '>=',
+        'text', 'range'
     );
 
     /**
      * Create a new query builder instance.
      *
-     * @param $index
-     * @param $type
+     * @param string $index
+     * @param string $type
      * @param \Elastica\Client $client
      */
     public function __construct($index, $type, \Elastica\Client $client = null)
@@ -83,6 +90,11 @@ class Builder
             ));
         }
         $this->client = $client;
+    }
+
+    public function setEloquentName($model_name)
+    {
+        $this->eloquent_name = $model_name;
     }
 
     /**
@@ -110,14 +122,27 @@ class Builder
         // passed to the method, we will assume that the operator is an equals sign
         // and keep going. Otherwise, we'll require the operator to be passed in.
         if (func_num_args() == 2) {
-            list($value, $operator) = array($operator, 'term');
+            list($value, $operator) = array($operator, '=');
         }
 
         // If the given operator is not found in the list of valid operators we will
-        // assume that the developer is just short-cutting the 'term' operators and
-        // we will set the operators to 'term' and set the values appropriately.
+        // assume that the developer is just short-cutting the '=' operators and
+        // we will set the operators to '=' and set the values appropriately.
         if (!in_array(strtolower($operator), $this->operators, true)) {
-            list($value, $operator) = array($operator, 'term');
+            list($value, $operator) = array($operator, '=');
+        }
+
+        if ($operator == '=') $operator = 'term';
+
+        $conversion = [
+            '<'  => 'lt',
+            '<=' => 'lte',
+            '>'  => 'gt',
+            '>=' => 'gte',
+        ];
+        if (isset($conversion[$operator])) {
+            $value = [$conversion[$operator] => $value];
+            $operator = 'range';
         }
 
         $this->wheres[] = compact('operator', 'column', 'value', 'boolean');
@@ -160,7 +185,14 @@ class Builder
      */
     public function whereBetween($column, array $values, $boolean = 'must')
     {
-        return $this->where($column, 'range', $values, $boolean);
+        $operator = 'range';
+
+        list($gte, $lte) = $values;
+        $value = compact('gte', 'lte');
+
+        $this->wheres[] = compact('operator', 'column', 'value', 'boolean');
+
+        return $this;
     }
 
     /**
@@ -177,6 +209,17 @@ class Builder
     }
 
     /**
+     * Alias to set the "offset" value of the query.
+     *
+     * @param  int  $value
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function skip($value)
+    {
+        return $this->offset($value);
+    }
+
+    /**
      * Set the "limit" value of the query.
      *
      * @param  int $value
@@ -187,6 +230,29 @@ class Builder
         if ($value > 0) $this->limit = $value;
 
         return $this;
+    }
+
+    /**
+     * Alias to set the "limit" value of the query.
+     *
+     * @param  int  $value
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function take($value)
+    {
+        return $this->limit($value);
+    }
+
+    /**
+     * Set the limit and offset for a given page.
+     *
+     * @param  int  $page
+     * @param  int  $perPage
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function forPage($page, $perPage = 15)
+    {
+        return $this->skip(($page - 1) * $perPage)->take($perPage);
     }
 
     /**
@@ -207,9 +273,10 @@ class Builder
     /**
      * Execute the query
      *
+     * @param bool $return_eloquent
      * @return \Elastica\ResultSet
      */
-    public function get()
+    public function get($return_eloquent = true)
     {
         $query = new \Elastica\Query();
 
@@ -229,7 +296,46 @@ class Builder
             $query->setSort($this->orders);
         }
 
-        return $this->client->getIndex($this->index)->getType($this->type)->search($query);
+        $results = $this->client->getIndex($this->index)->getType($this->type)->search($query);
+
+        if ($return_eloquent && !is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+            $model = new $this->eloquent_name();
+            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
+                $ids = [];
+                foreach ($results->getResults() as $val) {
+                    $ids[] = $val->getHit()['_id'];
+                }
+                return $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get a paginator for the "select" statement.
+     *
+     * @param int $perPage
+     * @return \Illuminate\Pagination\Paginator
+     */
+    public function paginate($perPage = 15)
+    {
+        $page = \Paginator::make([], PHP_INT_MAX, $perPage)->getCurrentPage();
+        $results = $this->forPage($page, $perPage)->get(false);
+
+        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+            $model = new $this->eloquent_name();
+            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
+                $ids = [];
+                foreach ($results->getResults() as $val) {
+                    $ids[] = $val->getHit()['_id'];
+                }
+                $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
+                return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
+            }
+        }
+
+        return \Paginator::make($results->getResults(), $results->getTotalHits(), $perPage);
     }
 
     /**
@@ -252,7 +358,7 @@ class Builder
                     break;
                 case 'range':
                     $_query = new \Elastica\Query\Range();
-                    $_query->addField($val['column'], ['from' => $val['value'][0], 'to' => $val['value'][1]]);
+                    $_query->addField($val['column'], $val['value']);
                     break;
                 case 'raw':
                     $_query = $val['query'];
