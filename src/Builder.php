@@ -374,10 +374,9 @@ class Builder
     /**
      * Execute the query
      *
-     * @param bool $return_eloquent
      * @return \Elastica\ResultSet
      */
-    public function get($return_eloquent = true)
+    protected function _get()
     {
         $query = new \Elastica\Query();
 
@@ -397,9 +396,19 @@ class Builder
             $query->setSort($this->orders);
         }
 
-        $results = $this->client->getIndex($this->index)->getType($this->type)->search($query);
+        return $this->client->getIndex($this->index)->getType($this->type)->search($query);
+    }
 
-        if ($return_eloquent && !is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+    /**
+     * Execute the query
+     *
+     * @return \Elastica\ResultSet
+     */
+    public function get()
+    {
+        $results = $this->_get();
+
+        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
                 $ids = [];
@@ -422,7 +431,7 @@ class Builder
     public function paginate($perPage = 15)
     {
         $page = \Paginator::make([], PHP_INT_MAX, $perPage)->getCurrentPage();
-        $results = $this->forPage($page, $perPage)->get(false);
+        $results = $this->forPage($page, $perPage)->_get();
 
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
