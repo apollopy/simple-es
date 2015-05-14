@@ -1,4 +1,6 @@
 <?php namespace Shafa\SimpleES;
+
+use Closure;
 /**
  * Class Builder
  *
@@ -123,6 +125,15 @@ class Builder
         // and keep going. Otherwise, we'll require the operator to be passed in.
         if (func_num_args() == 2) {
             list($value, $operator) = array($operator, '=');
+        } elseif ($this->invalidOperatorAndValue($operator, $value)) {
+            throw new \InvalidArgumentException("Value must be provided.");
+        }
+
+        // If the columns is actually a Closure instance, we will assume the developer
+        // wants to begin a nested where statement which is wrapped in parenthesis.
+        // We'll add that Closure to the query then return back out immediately.
+        if ($column instanceof Closure) {
+            return $this->whereNested($column, $boolean);
         }
 
         // If the given operator is not found in the list of valid operators we will
@@ -151,11 +162,66 @@ class Builder
     }
 
     /**
+     * Add an "or where" clause to the query.
+     *
+     * @param  string  $column
+     * @param  string  $operator
+     * @param  mixed   $value
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function orWhere($column, $operator = null, $value = null)
+    {
+        return $this->where($column, $operator, $value, 'should');
+    }
+
+    /**
+     * Determine if the given operator and value combination is legal.
+     *
+     * @param  string  $operator
+     * @param  mixed  $value
+     * @return bool
+     */
+    protected function invalidOperatorAndValue($operator, $value)
+    {
+        $isOperator = in_array($operator, $this->operators);
+
+        return ($isOperator && $operator != '=' && is_null($value));
+    }
+
+    /**
+     * Add a nested where statement to the query.
+     *
+     * @param  \Closure $callback
+     * @param  string   $boolean
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function whereNested(Closure $callback, $boolean = 'must')
+    {
+        // To handle nested queries we'll actually create a brand new query instance
+        // and pass it off to the Closure that we have. The Closure can simply do
+        // do whatever it wants to a query then we will store it for compiling.
+        $search = $this->newSearch();
+
+        call_user_func($callback, $search);
+
+        if (count($search->wheres)) {
+            $operator = 'nested';
+
+            $this->wheres[] = compact('operator', 'search', 'boolean');
+        }
+
+        return $this;
+    }
+
+    /**
+     * Add a raw where clause to the query.
+     *
      * @param \Elastica\Query\AbstractQuery $query
      * @param string $boolean
      * @return \Shafa\SimpleES\Builder
      */
-    public function whereRaw(\Elastica\Query\AbstractQuery $query, $boolean = 'must') {
+    public function whereRaw(\Elastica\Query\AbstractQuery $query, $boolean = 'must')
+    {
         $operator = 'raw';
         $this->wheres[] = compact('operator', 'query', 'boolean');
 
@@ -163,7 +229,18 @@ class Builder
     }
 
     /**
-     * Add an "where text" clause to the query.
+     * Add a raw or where clause to the query.
+     *
+     * @param \Elastica\Query\AbstractQuery $query
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function orWhereRaw(\Elastica\Query\AbstractQuery $query)
+    {
+        return $this->whereRaw($query, 'should');
+    }
+
+    /**
+     * Add a test where clause to the query.
      *
      * @param $column
      * @param $value
@@ -173,6 +250,18 @@ class Builder
     public function whereText($column, $value, $boolean = 'must')
     {
         return $this->where($column, 'text', $value, $boolean);
+    }
+
+    /**
+     * Add a test or where clause to the query.
+     *
+     * @param $column
+     * @param $value
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function orWhereText($column, $value)
+    {
+        return $this->whereText($column, $value, 'should');
     }
 
     /**
@@ -193,6 +282,18 @@ class Builder
         $this->wheres[] = compact('operator', 'column', 'value', 'boolean');
 
         return $this;
+    }
+
+    /**
+     * Add an or where between statement to the query.
+     *
+     * @param $column
+     * @param array $values
+     * @return \Shafa\SimpleES\Builder
+     */
+    public function orWhereBetween($column, array $values)
+    {
+        return $this->whereBetween($column, $values, 'should');
     }
 
     /**
@@ -281,7 +382,7 @@ class Builder
         $query = new \Elastica\Query();
 
         if ($this->hasWhere()) {
-            $query->setQuery($this->compileWhere());
+            $query->setQuery($this->compileWhere($this->wheres));
         }
 
         if ($this->offset) {
@@ -341,13 +442,17 @@ class Builder
     /**
      * Compile Where
      *
+     * @param array $wheres
      * @return \Elastica\Query\AbstractQuery
      */
-    protected function compileWhere()
+    protected function compileWhere($wheres)
     {
         $queries = [];
-        foreach ($this->wheres as $val) {
+        foreach ($wheres as $val) {
             switch ($val['operator']) {
+                case 'nested':
+                    $_query = $this->compileWhere($val['search']->wheres);
+                    break;
                 case 'term':
                     $_query = new \Elastica\Query\Term();
                     $_query->setTerm($val['column'], $val['value']);
@@ -376,12 +481,17 @@ class Builder
         }
 
         $query = new \Elastica\Query\Bool();
-        foreach ($queries as $val) {
-            if ($val['boolean'] == 'must') {
-                $query->addMust($val['query']);
+        foreach ($queries as $i => $val) {
+            // The next item in a "chain" of wheres devices the boolean of the
+            // first item. So if we see that there are multiple wheres, we will
+            // use the operator of the next where.
+            if ($i == 0 and count($queries) > 1 and $val['boolean'] == 'must') {
+                $val['boolean'] = $queries[1]['boolean'];
             }
-//            $function_name = 'add' . studly_case($val['boolean']);
-//            $query->$function_name($val['query']);
+
+            // should | must | must_not
+            $function_name = 'add' . studly_case($val['boolean']);
+            $query->$function_name($val['query']);
         }
 
         return $query;
