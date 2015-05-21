@@ -31,7 +31,7 @@ class Builder
     /**
      * The type name
      *
-     * @var string
+     * @var null | string
      */
     protected $type;
 
@@ -80,7 +80,7 @@ class Builder
      * @param string $type
      * @param \Elastica\Client $client
      */
-    public function __construct($index, $type, \Elastica\Client $client = null)
+    public function __construct($index, $type = null, \Elastica\Client $client = null)
     {
         $this->index = $index;
         $this->type = $type;
@@ -396,7 +396,12 @@ class Builder
             $query->setSort($this->orders);
         }
 
-        return $this->client->getIndex($this->index)->getType($this->type)->search($query);
+        $client = $this->client->getIndex($this->index);
+        if ($this->type) {
+            $client = $client->getType($this->type);
+        }
+
+        return $client->search($query);
     }
 
     /**
@@ -413,7 +418,8 @@ class Builder
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
                 $ids = [];
                 foreach ($results->getResults() as $val) {
-                    $ids[] = $val->getHit()['_id'];
+                    /* @var $val \Elastica\Result */
+                    $ids[] = $val->getId();
                 }
                 return $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
             }
@@ -438,7 +444,8 @@ class Builder
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
                 $ids = [];
                 foreach ($results->getResults() as $val) {
-                    $ids[] = $val->getHit()['_id'];
+                    /* @var $val \Elastica\Result */
+                    $ids[] = $val->getId();
                 }
                 $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
                 return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
