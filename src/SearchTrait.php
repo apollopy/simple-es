@@ -1,4 +1,4 @@
-<?php namespace Shafa\SimpleES;
+<?php namespace ApolloPY\SimpleES;
 
 trait SearchTrait
 {
@@ -20,7 +20,7 @@ trait SearchTrait
     /**
      * Get a new instance of the query builder.
      *
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     protected function newSearch()
     {
@@ -30,7 +30,7 @@ trait SearchTrait
     }
 
     /**
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public static function search() {
         $instance = new static;

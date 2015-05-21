@@ -1,4 +1,4 @@
-<?php namespace Shafa\SimpleES;
+<?php namespace ApolloPY\SimpleES;
 
 use Closure;
 /**
@@ -6,7 +6,7 @@ use Closure;
  *
  * @see Illuminate\Database\Query\Builder
  * @see Jenssegers\Mongodb\Query\Builder
- * @package Shafa\SimpleES
+ * @package ApolloPY\SimpleES
  */
 class Builder
 {
@@ -102,7 +102,7 @@ class Builder
     /**
      * Get a new instance of the query builder.
      *
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function newSearch()
     {
@@ -116,7 +116,7 @@ class Builder
      * @param  string $operator
      * @param  mixed $value
      * @param  string $boolean
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function where($column, $operator = null, $value = null, $boolean = 'must')
     {
@@ -167,7 +167,7 @@ class Builder
      * @param  string  $column
      * @param  string  $operator
      * @param  mixed   $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhere($column, $operator = null, $value = null)
     {
@@ -193,7 +193,7 @@ class Builder
      *
      * @param  \Closure $callback
      * @param  string   $boolean
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function whereNested(Closure $callback, $boolean = 'must')
     {
@@ -218,7 +218,7 @@ class Builder
      *
      * @param \Elastica\Query\AbstractQuery $query
      * @param string $boolean
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function whereRaw(\Elastica\Query\AbstractQuery $query, $boolean = 'must')
     {
@@ -232,7 +232,7 @@ class Builder
      * Add a raw or where clause to the query.
      *
      * @param \Elastica\Query\AbstractQuery $query
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereRaw(\Elastica\Query\AbstractQuery $query)
     {
@@ -245,7 +245,7 @@ class Builder
      * @param $column
      * @param $value
      * @param string $boolean
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function whereText($column, $value, $boolean = 'must')
     {
@@ -257,7 +257,7 @@ class Builder
      *
      * @param $column
      * @param $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereText($column, $value)
     {
@@ -270,7 +270,7 @@ class Builder
      * @param  string  $column
      * @param  array   $values
      * @param  string  $boolean
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function whereBetween($column, array $values, $boolean = 'must')
     {
@@ -289,7 +289,7 @@ class Builder
      *
      * @param $column
      * @param array $values
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereBetween($column, array $values)
     {
@@ -300,7 +300,7 @@ class Builder
      * Set the "offset" value of the query.
      *
      * @param  int $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function offset($value)
     {
@@ -313,7 +313,7 @@ class Builder
      * Alias to set the "offset" value of the query.
      *
      * @param  int  $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function skip($value)
     {
@@ -324,7 +324,7 @@ class Builder
      * Set the "limit" value of the query.
      *
      * @param  int $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function limit($value)
     {
@@ -337,7 +337,7 @@ class Builder
      * Alias to set the "limit" value of the query.
      *
      * @param  int  $value
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function take($value)
     {
@@ -349,7 +349,7 @@ class Builder
      *
      * @param  int  $page
      * @param  int  $perPage
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function forPage($page, $perPage = 15)
     {
@@ -361,7 +361,7 @@ class Builder
      *
      * @param  string $column
      * @param  string $direction
-     * @return \Shafa\SimpleES\Builder
+     * @return \ApolloPY\SimpleES\Builder
      */
     public function orderBy($column, $direction = 'asc')
     {
