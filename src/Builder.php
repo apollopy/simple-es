@@ -76,22 +76,15 @@ class Builder
     /**
      * Create a new query builder instance.
      *
+     * @param \Elastica\Client $client
      * @param string $index
      * @param string $type
-     * @param \Elastica\Client $client
      */
-    public function __construct($index, $type = null, \Elastica\Client $client = null)
+    public function __construct(\Elastica\Client $client, $index, $type = null)
     {
+        $this->client = $client;
         $this->index = $index;
         $this->type = $type;
-
-        if (is_null($client)) {
-            $client = new \Elastica\Client(array(
-                'host' => \LConfig::get("es.host"),
-                'port' => \LConfig::get("es.port")
-            ));
-        }
-        $this->client = $client;
     }
 
     public function setEloquentName($model_name)
@@ -106,7 +99,7 @@ class Builder
      */
     public function newSearch()
     {
-        return new Builder($this->index, $this->type, $this->client);
+        return new Builder($this->client, $this->index, $this->type);
     }
 
     /**
