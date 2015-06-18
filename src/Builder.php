@@ -407,6 +407,10 @@ class Builder
         $results = $this->take(1)->_get();
         $result = count($results->getResults()) > 0 ? reset($results->getResults()) : null;
 
+        if ($result == null) {
+            return $result;
+        }
+
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
