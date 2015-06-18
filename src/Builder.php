@@ -398,6 +398,26 @@ class Builder
     }
 
     /**
+     * Execute the query and get the first result.
+     *
+     * @return \Elastica\Result | \Illuminate\Database\Eloquent\Model | null
+     */
+    public function first()
+    {
+        $results = $this->take(1)->_get();
+        $result = count($results->getResults()) > 0 ? reset($results->getResults()) : null;
+
+        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+            $model = new $this->eloquent_name();
+            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
+                return $model->find($result->getId());
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Execute the query
      *
      * @return \Elastica\ResultSet
