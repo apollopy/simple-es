@@ -438,6 +438,11 @@ class Builder
                     /* @var $val \Elastica\Result */
                     $ids[] = $val->getId();
                 }
+
+                if (!$ids) {
+                    return new \Illuminate\Database\Eloquent\Collection();
+                }
+
                 return $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
             }
         }
@@ -463,6 +468,9 @@ class Builder
                 foreach ($results->getResults() as $val) {
                     /* @var $val \Elastica\Result */
                     $ids[] = $val->getId();
+                }
+                if (!$ids) {
+                    return new \Illuminate\Database\Eloquent\Collection();
                 }
                 $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
                 return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
