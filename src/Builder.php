@@ -424,7 +424,7 @@ class Builder
     /**
      * Execute the query
      *
-     * @return \Elastica\ResultSet
+     * @return \Elastica\ResultSet | \Illuminate\Database\Eloquent\Collection
      */
     public function get()
     {
@@ -470,7 +470,7 @@ class Builder
                     $ids[] = $val->getId();
                 }
                 if (!$ids) {
-                    return new \Illuminate\Database\Eloquent\Collection();
+                    return \Paginator::make([], $results->getTotalHits(), $perPage);
                 }
                 $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
                 return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
