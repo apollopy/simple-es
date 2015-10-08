@@ -1,6 +1,11 @@
-<?php namespace ApolloPY\SimpleES;
+<?php
+
+namespace ApolloPY\SimpleES;
 
 use Closure;
+use Illuminate\Support\Collection;
+use \Illuminate\Pagination\LengthAwarePaginator as Paginator;
+
 /**
  * Class Builder
  *
@@ -454,12 +459,18 @@ class Builder
      * Get a paginator for the "select" statement.
      *
      * @param int $perPage
-     * @return \Illuminate\Pagination\Paginator
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public function paginate($perPage = 15)
     {
-        $page = \Paginator::make([], PHP_INT_MAX, $perPage)->getCurrentPage();
+        $page = Paginator::resolveCurrentPage();
         $results = $this->forPage($page, $perPage)->_get();
+
+        if (!$results->count()) {
+            return new Paginator([], $results->getTotalHits(), $perPage, $page, [
+                'path' => Paginator::resolveCurrentPath(),
+            ]);
+        }
 
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
@@ -469,15 +480,17 @@ class Builder
                     /* @var $val \Elastica\Result */
                     $ids[] = $val->getId();
                 }
-                if (!$ids) {
-                    return \Paginator::make([], $results->getTotalHits(), $perPage);
-                }
+
                 $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
-                return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
+                return new Paginator($_results->all(), $results->getTotalHits(), $perPage, $page, [
+                    'path' => Paginator::resolveCurrentPath(),
+                ]);
             }
         }
 
-        return \Paginator::make($results->getResults(), $results->getTotalHits(), $perPage);
+        return new Paginator($results->getResults(), $results->getTotalHits(), $perPage, $page, [
+            'path' => Paginator::resolveCurrentPath(),
+        ]);
     }
 
     /**
