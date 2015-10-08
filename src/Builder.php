@@ -3,7 +3,6 @@
 namespace ApolloPY\SimpleES;
 
 use Closure;
-use Illuminate\Support\Collection;
 use \Illuminate\Pagination\LengthAwarePaginator as Paginator;
 
 /**
@@ -482,7 +481,7 @@ class Builder
                 }
 
                 $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
-                return new Paginator($_results->all(), $results->getTotalHits(), $perPage, $page, [
+                return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
                     'path' => Paginator::resolveCurrentPath(),
                 ]);
             }
