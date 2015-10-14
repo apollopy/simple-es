@@ -447,11 +447,23 @@ class Builder
                     return new \Illuminate\Database\Eloquent\Collection();
                 }
 
-                return $model->whereIn($model->getKeyName(), $ids)->get()->sort(build_callback_for_collection_sort($ids));
+                return $model->whereIn($model->getKeyName(), $ids)->get()->sort($this->build_callback_for_collection_sort($ids));
             }
         }
 
         return $results;
+    }
+
+    /**
+     * @param array $keys
+     * @param string $key_name
+     * @return callable
+     */
+    protected function build_callback_for_collection_sort(array $keys, $key_name = 'id') {
+        $keys = array_flip($keys);
+        return function ($a, $b) use ($keys, $key_name) {
+            return $keys[$a->$key_name] - $keys[$b->$key_name];
+        };
     }
 
     /**
