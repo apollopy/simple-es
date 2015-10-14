@@ -447,7 +447,10 @@ class Builder
                     return new \Illuminate\Database\Eloquent\Collection();
                 }
 
-                return $model->whereIn($model->getKeyName(), $ids)->get()->sort($this->build_callback_for_collection_sort($ids));
+                return $model->whereIn($model->getKeyName(), $ids)
+                    ->get()
+                    ->sort($this->build_callback_for_collection_sort($ids))
+                    ->unique();
             }
         }
 
