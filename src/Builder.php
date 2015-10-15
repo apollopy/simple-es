@@ -409,12 +409,11 @@ class Builder
     public function first()
     {
         $results = $this->take(1)->_get();
-        $result = count($results->getResults()) > 0 ? reset($results->getResults()) : null;
-
-        if ($result == null) {
-            return $result;
+        if (count($results->getResults()) <= 0) {
+            return null;
         }
 
+        $result = $results->getResults()[0];
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
@@ -495,7 +494,10 @@ class Builder
                     $ids[] = $val->getId();
                 }
 
-                $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
+                $_results = $model->whereIn($model->getKeyName(), $ids)
+                    ->get()
+                    ->sort($this->build_callback_for_collection_sort($ids))
+                    ->unique();
                 return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
                     'path' => Paginator::resolveCurrentPath(),
                 ]);
