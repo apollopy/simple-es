@@ -31,9 +31,12 @@ trait SearchTrait
      */
     protected function newSearch()
     {
-        $obj = new Builder($this->getSearchClient(), $this->getSearchIndexName(), $this->getSearchTypeName());
-        $obj->setEloquentName(get_class($this));
-        return $obj;
+        return new Builder(
+            $this->getSearchClient(),
+            $this->getSearchIndexName(),
+            $this->getSearchTypeName(),
+            get_class($this)
+        );
     }
 
     /**

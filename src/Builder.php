@@ -81,19 +81,28 @@ class Builder
      * Create a new query builder instance.
      *
      * @param \Elastica\Client $client
-     * @param string $index
-     * @param string $type
+     * @param $index
+     * @param null $type
+     * @param null $model_name
      */
-    public function __construct(\Elastica\Client $client, $index, $type = null)
+    public function __construct(\Elastica\Client $client, $index, $type = null, $model_name = null)
     {
         $this->client = $client;
         $this->index = $index;
         $this->type = $type;
+        $this->eloquent_name = $model_name;
     }
 
-    public function setEloquentName($model_name)
+    /**
+     * Set eloquent name
+     *
+     * @param null $model_name
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function setEloquentName($model_name = null)
     {
         $this->eloquent_name = $model_name;
+        return $this;
     }
 
     /**
