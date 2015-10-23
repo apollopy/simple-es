@@ -1,6 +1,10 @@
-<?php namespace ApolloPY\SimpleES;
+<?php
+
+namespace ApolloPY\SimpleES;
 
 use Closure;
+use \Illuminate\Pagination\LengthAwarePaginator as Paginator;
+
 /**
  * Class Builder
  *
@@ -77,19 +81,28 @@ class Builder
      * Create a new query builder instance.
      *
      * @param \Elastica\Client $client
-     * @param string $index
-     * @param string $type
+     * @param $index
+     * @param null $type
+     * @param null $model_name
      */
-    public function __construct(\Elastica\Client $client, $index, $type = null)
+    public function __construct(\Elastica\Client $client, $index, $type = null, $model_name = null)
     {
         $this->client = $client;
         $this->index = $index;
         $this->type = $type;
+        $this->eloquent_name = $model_name;
     }
 
-    public function setEloquentName($model_name)
+    /**
+     * Set eloquent name
+     *
+     * @param null $model_name
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function setEloquentName($model_name = null)
     {
         $this->eloquent_name = $model_name;
+        return $this;
     }
 
     /**
@@ -405,12 +418,11 @@ class Builder
     public function first()
     {
         $results = $this->take(1)->_get();
-        $result = count($results->getResults()) > 0 ? reset($results->getResults()) : null;
-
-        if ($result == null) {
-            return $result;
+        if (count($results->getResults()) <= 0) {
+            return null;
         }
 
+        $result = $results->getResults()[0];
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
             if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
@@ -443,7 +455,10 @@ class Builder
                     return new \Illuminate\Database\Eloquent\Collection();
                 }
 
-                return $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
+                return $model->whereIn($model->getKeyName(), $ids)
+                    ->get()
+                    ->sort($this->build_callback_for_collection_sort($ids))
+                    ->unique();
             }
         }
 
@@ -451,15 +466,33 @@ class Builder
     }
 
     /**
+     * @param array $keys
+     * @param string $key_name
+     * @return callable
+     */
+    protected function build_callback_for_collection_sort(array $keys, $key_name = 'id') {
+        $keys = array_flip($keys);
+        return function ($a, $b) use ($keys, $key_name) {
+            return $keys[$a->$key_name] - $keys[$b->$key_name];
+        };
+    }
+
+    /**
      * Get a paginator for the "select" statement.
      *
      * @param int $perPage
-     * @return \Illuminate\Pagination\Paginator
+     * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public function paginate($perPage = 15)
     {
-        $page = \Paginator::make([], PHP_INT_MAX, $perPage)->getCurrentPage();
+        $page = Paginator::resolveCurrentPage();
         $results = $this->forPage($page, $perPage)->_get();
+
+        if (!$results->count()) {
+            return new Paginator([], $results->getTotalHits(), $perPage, $page, [
+                'path' => Paginator::resolveCurrentPath(),
+            ]);
+        }
 
         if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
@@ -469,15 +502,20 @@ class Builder
                     /* @var $val \Elastica\Result */
                     $ids[] = $val->getId();
                 }
-                if (!$ids) {
-                    return \Paginator::make([], $results->getTotalHits(), $perPage);
-                }
-                $_results = $model->whereIn('_id', $ids)->get()->sort(build_callback_for_collection_sort($ids));
-                return \Paginator::make($_results->all(), $results->getTotalHits(), $perPage);
+
+                $_results = $model->whereIn($model->getKeyName(), $ids)
+                    ->get()
+                    ->sort($this->build_callback_for_collection_sort($ids))
+                    ->unique();
+                return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
+                    'path' => Paginator::resolveCurrentPath(),
+                ]);
             }
         }
 
-        return \Paginator::make($results->getResults(), $results->getTotalHits(), $perPage);
+        return new Paginator($results->getResults(), $results->getTotalHits(), $perPage, $page, [
+            'path' => Paginator::resolveCurrentPath(),
+        ]);
     }
 
     /**
