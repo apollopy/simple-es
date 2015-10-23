@@ -13,10 +13,7 @@ class Connector
      */
     public function connect(array $config)
     {
-        return new \Elastica\Client(array(
-            'host' => $config['host'],
-            'port' => $config['port']
-        ));
+        return new \Elastica\Client($config);
     }
 
 }
