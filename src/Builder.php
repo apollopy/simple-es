@@ -522,6 +522,12 @@ class Builder
      * Compile Where
      *
      * @param array $wheres
+     * - column 字段
+     * - value 值
+     * - operator 判断模式
+     * - boolean 与其它条件的关系
+     * - query 原生条件
+     * - search 递归的 Builder 类
      * @return \Elastica\Query\AbstractQuery
      */
     protected function compileWhere($wheres)
@@ -539,6 +545,7 @@ class Builder
                 case 'text':
                     $_query = new \Elastica\Query\Match();
                     $_query->setFieldQuery($val['column'], $val['value']);
+                    $_query->setFieldType($val['column'], 'phrase');
                     break;
                 case 'range':
                     $_query = new \Elastica\Query\Range();
