@@ -42,7 +42,8 @@ trait SearchTrait
     /**
      * @return \ApolloPY\SimpleES\Builder
      */
-    public static function search() {
+    public static function search()
+    {
         $instance = new static;
         return $instance->newSearch();
     }
