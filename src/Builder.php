@@ -476,7 +476,7 @@ class Builder
                 return $model->whereIn($model->getKeyName(), $ids)
                     ->get()
                     ->sort($this->build_callback_for_collection_sort($ids))
-                    ->unique();
+                    ->values();
             }
         }
 
@@ -527,7 +527,7 @@ class Builder
                 $_results = $model->whereIn($model->getKeyName(), $ids)
                     ->get()
                     ->sort($this->build_callback_for_collection_sort($ids))
-                    ->unique();
+                    ->values();
                 return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
                     'path' => Paginator::resolveCurrentPath(),
                 ]);
