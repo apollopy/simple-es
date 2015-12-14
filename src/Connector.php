@@ -9,6 +9,7 @@ class Connector
 {
     /**
      * @param array $config
+     *
      * @return \Elastica\Client
      */
     public function connect(array $config)
