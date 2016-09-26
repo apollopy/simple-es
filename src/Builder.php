@@ -588,7 +588,10 @@ class Builder
             return $queries[0]['query'];
         }
 
-        $query = new \Elastica\Query\Bool();
+        // Cannot use 'Bool' as class name as it is reserved
+        // Use Elastica\Filter\BoolFilter and Elastica\Query\BoolQuery instead.
+        // $query = new \Elastica\Query\Bool();
+        $query = new \Elastica\Query\BoolQuery();
         foreach ($queries as $i => $val) {
             // The next item in a "chain" of wheres devices the boolean of the
             // first item. So if we see that there are multiple wheres, we will
