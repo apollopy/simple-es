@@ -592,4 +592,36 @@ class Builder
         return (bool) count($this->wheres);
     }
 
+    /**
+     * Call the given model scope on the underlying model.
+     *
+     * @param  string  $scope
+     * @param  array   $parameters
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    protected function callScope($scope, $parameters)
+    {
+        array_unshift($parameters, $this);
+
+        return call_user_func_array([new $this->eloquent_name, $scope], $parameters) ?: $this;
+    }
+
+    /**
+     * Dynamically handle calls into the query instance.
+     *
+     * @param  string $method
+     * @param  array $parameters
+     * @return mixed
+     */
+    public function __call($method, $parameters)
+    {
+        if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+            $scope = 'searchScope'.ucfirst($method);
+            if (method_exists($this->eloquent_name, $scope)) {
+                return $this->callScope($scope, $parameters);
+            }
+        }
+
+        throw new \BadMethodCallException('Call to undefined method '.self::class.'::'.$method.'()');
+    }
 }
