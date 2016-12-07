@@ -425,9 +425,8 @@ class Builder
         $result = $results->getResults()[0];
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                return $model->find($result->getId());
-            }
+
+            return $model->find($result->getId());
         }
 
         return $result;
@@ -444,24 +443,23 @@ class Builder
 
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                $ids = [];
-                foreach ($results->getResults() as $val) {
-                    /* @var $val \Elastica\Result */
-                    $ids[] = $val->getId();
-                }
-
-                if (! $ids) {
-                    return new Collection([], $results->getTotalHits());
-                }
-
-                $items = $model->whereIn($model->getKeyName(), $ids)
-                    ->get()
-                    ->sort($this->build_callback_for_collection_sort($ids))
-                    ->values()->all();
-
-                return new Collection($items, $results->getTotalHits());
+            $ids = [];
+            foreach ($results->getResults() as $val) {
+                /* @var $val \Elastica\Result */
+                $ids[] = $val->getId();
             }
+
+            if (! $ids) {
+                return new Collection([], $results->getTotalHits());
+            }
+
+            $items = $model->whereIn($model->getKeyName(), $ids)
+                ->get()
+                ->sort($this->build_callback_for_collection_sort($ids))
+                ->values()
+                ->all();
+
+            return new Collection($items, $results->getTotalHits());
         }
 
         return $results;
@@ -500,22 +498,20 @@ class Builder
 
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                $ids = [];
-                foreach ($results->getResults() as $val) {
-                    /* @var $val \Elastica\Result */
-                    $ids[] = $val->getId();
-                }
-
-                $_results = $model->whereIn($model->getKeyName(), $ids)
-                    ->get()
-                    ->sort($this->build_callback_for_collection_sort($ids))
-                    ->values();
-
-                return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
-                    'path' => Paginator::resolveCurrentPath(),
-                ]);
+            $ids = [];
+            foreach ($results->getResults() as $val) {
+                /* @var $val \Elastica\Result */
+                $ids[] = $val->getId();
             }
+
+            $_results = $model->whereIn($model->getKeyName(), $ids)
+                ->get()
+                ->sort($this->build_callback_for_collection_sort($ids))
+                ->values();
+
+            return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
+                'path' => Paginator::resolveCurrentPath(),
+            ]);
         }
 
         return new Paginator($results->getResults(), $results->getTotalHits(), $perPage, $page, [
