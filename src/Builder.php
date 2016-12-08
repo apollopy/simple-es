@@ -483,11 +483,14 @@ class Builder
      * Get a paginator for the "select" statement.
      *
      * @param int $perPage
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @param array $columns
+     * @param string $pageName
+     * @param null $page
+     * @return Paginator
      */
-    public function paginate($perPage = 15)
+    public function paginate($perPage = 15, $columns = ['*'], $pageName = 'page', $page = null)
     {
-        $page = Paginator::resolveCurrentPage();
+        $page = $page ?: Paginator::resolveCurrentPage($pageName);
         $results = $this->forPage($page, $perPage)->_get();
 
         if (! $results->count()) {
@@ -505,12 +508,13 @@ class Builder
             }
 
             $_results = $model->whereIn($model->getKeyName(), $ids)
-                ->get()
+                ->get($columns)
                 ->sort($this->build_callback_for_collection_sort($ids))
                 ->values();
 
             return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
-                'path' => Paginator::resolveCurrentPath(),
+                'path'     => Paginator::resolveCurrentPath(),
+                'pageName' => $pageName,
             ]);
         }
 
@@ -595,8 +599,8 @@ class Builder
     /**
      * Call the given model scope on the underlying model.
      *
-     * @param  string  $scope
-     * @param  array   $parameters
+     * @param  string $scope
+     * @param  array $parameters
      * @return \ApolloPY\SimpleES\Builder
      */
     protected function callScope($scope, $parameters)
