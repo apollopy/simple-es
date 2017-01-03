@@ -494,7 +494,7 @@ class Builder
         $results = $this->forPage($page, $perPage)->_get();
 
         if (! $results->count()) {
-            return new Paginator([], $results->getTotalHits(), $perPage, $page, [
+            return new Paginator(new Collection(), $results->getTotalHits(), $perPage, $page, [
                 'path' => Paginator::resolveCurrentPath(),
             ]);
         }
