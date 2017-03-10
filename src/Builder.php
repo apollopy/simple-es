@@ -73,7 +73,7 @@ class Builder
      */
     protected $operators = [
         '=', '<', '>', '<=', '>=',
-        'text', 'range',
+        'text', 'range', '<>', '!='
     ];
 
     /**
@@ -149,17 +149,22 @@ class Builder
             list($value, $operator) = [$operator, '='];
         }
 
-        if ($operator == '=') $operator = 'term';
-
-        $conversion = [
-            '<'  => 'lt',
-            '<=' => 'lte',
-            '>'  => 'gt',
-            '>=' => 'gte',
-        ];
-        if (isset($conversion[$operator])) {
-            $value = [$conversion[$operator] => $value];
-            $operator = 'range';
+        if ($operator == '=') {
+            $operator = 'term';
+        } elseif ($operator == '!=' || $operator == '<>') {
+            $operator = 'term';
+            $boolean = 'must_not';
+        } else {
+            $conversion = [
+                '<'  => 'lt',
+                '<=' => 'lte',
+                '>'  => 'gt',
+                '>=' => 'gte',
+            ];
+            if (isset($conversion[$operator])) {
+                $value = [$conversion[$operator] => $value];
+                $operator = 'range';
+            }
         }
 
         $this->wheres[] = compact('operator', 'column', 'value', 'boolean');
