@@ -73,7 +73,7 @@ class Builder
      */
     protected $operators = [
         '=', '<', '>', '<=', '>=',
-        'text', 'range', '<>', '!='
+        'text', 'range', '<>', '!=',
     ];
 
     /**
@@ -413,6 +413,25 @@ class Builder
         }
 
         return $client->search($query);
+    }
+
+    /**
+     * @return int
+     */
+    public function count()
+    {
+        $query = new \Elastica\Query();
+
+        if ($this->hasWhere()) {
+            $query->setQuery($this->compileWhere($this->wheres));
+        }
+
+        $client = $this->client->getIndex($this->index);
+        if ($this->type) {
+            $client = $client->getType($this->type);
+        }
+
+        return $client->count($query);
     }
 
     /**
