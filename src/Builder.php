@@ -577,14 +577,13 @@ class Builder
         }
 
         $query = new \Elastica\Query\BoolQuery();
-        foreach ($queries as $i => $val) {
-            // The next item in a "chain" of wheres devices the boolean of the
-            // first item. So if we see that there are multiple wheres, we will
-            // use the operator of the next where.
-            if ($i == 0 and count($queries) > 1 and $val['boolean'] == 'must') {
-                $val['boolean'] = $queries[1]['boolean'];
-            }
 
+        // 暂时只兼容 ->where()->orWhere() 这一种情况
+        if (count($queries) == 2 && $queries[0]['boolean'] == 'must' && $queries[1]['boolean'] == 'should') {
+            $queries[0]['boolean'] = 'should';
+        }
+
+        foreach ($queries as $i => $val) {
             // should | must | must_not
             $function_name = 'add'.studly_case($val['boolean']);
             $query->$function_name($val['query']);
