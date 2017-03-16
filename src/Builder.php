@@ -308,6 +308,33 @@ class Builder
     }
 
     /**
+     * Add a "where not null" clause to the query.
+     *
+     * @param $column
+     * @param  string $boolean
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function whereNotNull($column, $boolean = 'must')
+    {
+        $operator = 'exists';
+
+        $this->wheres[] = compact('operator', 'column', 'boolean');
+
+        return $this;
+    }
+
+    /**
+     * Add a "where null" clause to the query.
+     *
+     * @param $column
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function whereNull($column)
+    {
+        return $this->whereNotNull($column, 'must_not');
+    }
+
+    /**
      * Set the "offset" value of the query.
      *
      * @param  int $value
@@ -582,6 +609,9 @@ class Builder
                     break;
                 case 'raw':
                     $_query = $val['query'];
+                    break;
+                case 'exists':
+                    $_query = new \Elastica\Query\Exists($val['column']);
                     break;
                 default:
                     throw new \InvalidArgumentException(sprintf('$operator: %s unsupported', $val['operator']));
