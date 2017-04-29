@@ -476,8 +476,11 @@ class Builder
         $result = $results->getResults()[0];
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-
-            return $model->find($result->getId());
+            if (method_exists($model, 'findFromCache')) {
+                return $model->findFromCache($result->getId());
+            } else {
+                return $model->find($result->getId());
+            }
         }
 
         return $result;
@@ -504,11 +507,15 @@ class Builder
                 return new Collection([], $results->getTotalHits());
             }
 
-            $items = $model->whereIn($model->getKeyName(), $ids)
-                ->get()
-                ->sort($this->build_callback_for_collection_sort($ids))
-                ->values()
-                ->all();
+            if (method_exists($model, 'findFromCache')) {
+                $items = $model->findFromCache($ids);
+            } else {
+                $items = $model->whereIn($model->getKeyName(), $ids)
+                    ->get()
+                    ->sort($this->build_callback_for_collection_sort($ids));
+            }
+
+            $items = $items->values()->all();
 
             return new Collection($items, $results->getTotalHits());
         }
@@ -558,10 +565,14 @@ class Builder
                 $ids[] = $val->getId();
             }
 
-            $_results = $model->whereIn($model->getKeyName(), $ids)
-                ->get($columns)
-                ->sort($this->build_callback_for_collection_sort($ids))
-                ->values();
+            if (method_exists($model, 'findFromCache')) {
+                $_results = $model->findFromCache($ids);
+            } else {
+                $_results = $model->whereIn($model->getKeyName(), $ids)
+                    ->get($columns)
+                    ->sort($this->build_callback_for_collection_sort($ids));
+            }
+            $_results = $_results->values();
 
             return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
                 'path'     => Paginator::resolveCurrentPath(),
