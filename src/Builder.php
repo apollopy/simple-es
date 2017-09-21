@@ -116,6 +116,21 @@ class Builder
     }
 
     /**
+     * Get Connection
+     *
+     * @return \Elastica\Index|\Elastica\Type
+     */
+    public function getConnection()
+    {
+        $connection = $this->client->getIndex($this->index);
+        if ($this->type) {
+            $connection = $connection->getType($this->type);
+        }
+
+        return $connection;
+    }
+
+    /**
      * Add a basic where clause to the query.
      *
      * @param  string $column
@@ -434,12 +449,7 @@ class Builder
             $query->setSort($this->orders);
         }
 
-        $client = $this->client->getIndex($this->index);
-        if ($this->type) {
-            $client = $client->getType($this->type);
-        }
-
-        return $client->search($query);
+        return $this->getConnection()->search($query);
     }
 
     /**
@@ -453,12 +463,7 @@ class Builder
             $query->setQuery($this->compileWhere($this->wheres));
         }
 
-        $client = $this->client->getIndex($this->index);
-        if ($this->type) {
-            $client = $client->getType($this->type);
-        }
-
-        return $client->count($query);
+        return $this->getConnection()->count($query);
     }
 
     /**
