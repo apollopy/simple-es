@@ -427,9 +427,10 @@ class Builder
     /**
      * Execute the query
      *
+     * @param null | array $fields
      * @return \Elastica\ResultSet
      */
-    protected function _get()
+    protected function _get($fields = null)
     {
         $query = new \Elastica\Query();
 
@@ -447,6 +448,12 @@ class Builder
 
         if ($this->orders) {
             $query->setSort($this->orders);
+        }
+
+        if ($this->eloquent_name) {
+            $query->setFields([]);
+        } elseif (isset($fields) && $fields !== ['*']) {
+            $query->setFields($fields);
         }
 
         return $this->getConnection()->search($query);
@@ -469,11 +476,12 @@ class Builder
     /**
      * Execute the query and get the first result.
      *
+     * @param array $columns
      * @return \Elastica\Result | \Illuminate\Database\Eloquent\Model | null
      */
-    public function first()
+    public function first($columns = ['*'])
     {
-        $results = $this->take(1)->_get();
+        $results = $this->take(1)->_get($columns);
         if (count($results->getResults()) <= 0) {
             return null;
         }
@@ -484,7 +492,7 @@ class Builder
             if (method_exists($model, 'findFromCache')) {
                 return $model->findFromCache($result->getId());
             } else {
-                return $model->find($result->getId());
+                return $model->find($result->getId(), $columns);
             }
         }
 
@@ -494,11 +502,12 @@ class Builder
     /**
      * Execute the query
      *
+     * @param array $columns
      * @return \Elastica\ResultSet | Collection
      */
-    public function get()
+    public function get($columns = ['*'])
     {
-        $results = $this->_get();
+        $results = $this->_get($columns);
 
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
@@ -516,7 +525,7 @@ class Builder
                 $items = $model->findFromCache($ids);
             } else {
                 $items = $model->whereIn($model->getKeyName(), $ids)
-                    ->get()
+                    ->get($columns)
                     ->sort($this->build_callback_for_collection_sort($ids));
             }
 
@@ -554,7 +563,7 @@ class Builder
     public function paginate($perPage = 15, $columns = ['*'], $pageName = 'page', $page = null)
     {
         $page = $page ?: Paginator::resolveCurrentPage($pageName);
-        $results = $this->forPage($page, $perPage)->_get();
+        $results = $this->forPage($page, $perPage)->_get($columns);
 
         if (! $results->count()) {
             return new Paginator(new Collection(), $results->getTotalHits(), $perPage, $page, [
