@@ -357,7 +357,7 @@ class Builder
      */
     public function offset($value)
     {
-        $this->offset = max(0, $value);
+        $this->offset = max(0, (int) $value);
 
         return $this;
     }
@@ -381,7 +381,7 @@ class Builder
      */
     public function limit($value)
     {
-        if ($value > 0) $this->limit = $value;
+        if ($value > 0) $this->limit = (int) $value;
 
         return $this;
     }
