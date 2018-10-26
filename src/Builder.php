@@ -53,6 +53,13 @@ class Builder
     protected $orders;
 
     /**
+     * The script for the query.
+     *
+     * @var \Elastica\Script\Script
+     */
+    protected $script;
+
+    /**
      * The maximum number of records to return.
      *
      * @var int
@@ -425,6 +432,21 @@ class Builder
     }
 
     /**
+     * @param string $script
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function orderByScriptScore($script)
+    {
+        $score_script = new \Elastica\Script\Script('script_score');
+        $score_script->setScript($script);
+        $score_script->setLang('expression');
+
+        $this->script = $score_script;
+
+        return $this;
+    }
+
+    /**
      * Execute the query
      *
      * @param null | array $fields
@@ -434,8 +456,21 @@ class Builder
     {
         $query = new \Elastica\Query();
 
-        if ($this->hasWhere()) {
-            $query->setQuery($this->compileWhere($this->wheres));
+        if ($this->script) {
+            $function_score_query = new \Elastica\Query\FunctionScore();
+            $function_score_query->addScriptScoreFunction($this->script);
+            $function_score_query->setBoostMode(\Elastica\Query\FunctionScore::BOOST_MODE_REPLACE);
+            if ($this->hasWhere()) {
+                $function_score_query->setQuery($this->compileWhere($this->wheres));
+                $query->setQuery($function_score_query);
+            }
+        } else {
+            if ($this->hasWhere()) {
+                $query->setQuery($this->compileWhere($this->wheres));
+            }
+            if ($this->orders) {
+                $query->setSort($this->orders);
+            }
         }
 
         if ($this->offset) {
@@ -444,10 +479,6 @@ class Builder
 
         if ($this->limit) {
             $query->setSize($this->limit);
-        }
-
-        if ($this->orders) {
-            $query->setSort($this->orders);
         }
 
         if ($this->eloquent_name) {
