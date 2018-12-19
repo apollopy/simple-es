@@ -18,13 +18,6 @@ trait SearchTrait
     abstract public function getSearchIndexName();
 
     /**
-     * Get search type name
-     *
-     * @return string
-     */
-    abstract public function getSearchTypeName();
-
-    /**
      * Get search client
      *
      * @return \Elastica\Client
@@ -41,7 +34,7 @@ trait SearchTrait
         return new Builder(
             $this->getSearchClient(),
             $this->getSearchIndexName(),
-            $this->getSearchTypeName(),
+            '_doc',
             get_class($this)
         );
     }
