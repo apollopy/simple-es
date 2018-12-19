@@ -1,5 +1,12 @@
-<?php namespace ApolloPY\SimpleES;
+<?php
 
+namespace ApolloPY\SimpleES;
+
+/**
+ * Search trait.
+ *
+ * @author ApolloPY <ApolloPY@Gmail.com>
+ */
 trait SearchTrait
 {
 
@@ -45,6 +52,7 @@ trait SearchTrait
     public static function search()
     {
         $instance = new static;
+
         return $instance->newSearch();
     }
 

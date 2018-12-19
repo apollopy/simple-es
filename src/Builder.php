@@ -6,11 +6,9 @@ use Closure;
 use \Illuminate\Pagination\LengthAwarePaginator as Paginator;
 
 /**
- * Class Builder
+ * Builder class.
  *
- * @see     Illuminate\Database\Query\Builder
- * @see     Jenssegers\Mongodb\Query\Builder
- * @package ApolloPY\SimpleES
+ * @author ApolloPY <ApolloPY@Gmail.com>
  */
 class Builder
 {
@@ -55,6 +53,13 @@ class Builder
     protected $orders;
 
     /**
+     * The script for the query.
+     *
+     * @var \Elastica\Script\Script
+     */
+    protected $script;
+
+    /**
      * The maximum number of records to return.
      *
      * @var int
@@ -75,7 +80,7 @@ class Builder
      */
     protected $operators = [
         '=', '<', '>', '<=', '>=',
-        'text', 'range',
+        'text', 'range', '<>', '!=',
     ];
 
     /**
@@ -83,8 +88,8 @@ class Builder
      *
      * @param \Elastica\Client $client
      * @param                  $index
-     * @param null             $type
-     * @param null             $model_name
+     * @param null $type
+     * @param null $model_name
      */
     public function __construct(\Elastica\Client $client, $index, $type = null, $model_name = null)
     {
@@ -98,12 +103,12 @@ class Builder
      * Set eloquent name
      *
      * @param null $model_name
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function setEloquentName($model_name = null)
     {
         $this->eloquent_name = $model_name;
+
         return $this;
     }
 
@@ -118,13 +123,27 @@ class Builder
     }
 
     /**
+     * Get Connection
+     *
+     * @return \Elastica\Index|\Elastica\Type
+     */
+    public function getConnection()
+    {
+        $connection = $this->client->getIndex($this->index);
+        if ($this->type) {
+            $connection = $connection->getType($this->type);
+        }
+
+        return $connection;
+    }
+
+    /**
      * Add a basic where clause to the query.
      *
      * @param  string $column
      * @param  string $operator
-     * @param  mixed  $value
+     * @param  mixed $value
      * @param  string $boolean
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function where($column, $operator = null, $value = null, $boolean = 'must')
@@ -148,21 +167,26 @@ class Builder
         // If the given operator is not found in the list of valid operators we will
         // assume that the developer is just short-cutting the '=' operators and
         // we will set the operators to '=' and set the values appropriately.
-        if (!in_array(strtolower($operator), $this->operators, true)) {
+        if (! in_array(strtolower($operator), $this->operators, true)) {
             list($value, $operator) = [$operator, '='];
         }
 
-        if ($operator == '=') $operator = 'term';
-
-        $conversion = [
-            '<'  => 'lt',
-            '<=' => 'lte',
-            '>'  => 'gt',
-            '>=' => 'gte',
-        ];
-        if (isset($conversion[$operator])) {
-            $value = [$conversion[$operator] => $value];
-            $operator = 'range';
+        if ($operator == '=') {
+            $operator = 'term';
+        } elseif ($operator == '!=' || $operator == '<>') {
+            $operator = 'term';
+            $boolean = 'must_not';
+        } else {
+            $conversion = [
+                '<'  => 'lt',
+                '<=' => 'lte',
+                '>'  => 'gt',
+                '>=' => 'gte',
+            ];
+            if (isset($conversion[$operator])) {
+                $value = [$conversion[$operator] => $value];
+                $operator = 'range';
+            }
         }
 
         $this->wheres[] = compact('operator', 'column', 'value', 'boolean');
@@ -175,8 +199,7 @@ class Builder
      *
      * @param  string $column
      * @param  string $operator
-     * @param  mixed  $value
-     *
+     * @param  mixed $value
      * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhere($column, $operator = null, $value = null)
@@ -188,8 +211,7 @@ class Builder
      * Determine if the given operator and value combination is legal.
      *
      * @param  string $operator
-     * @param  mixed  $value
-     *
+     * @param  mixed $value
      * @return bool
      */
     protected function invalidOperatorAndValue($operator, $value)
@@ -203,8 +225,7 @@ class Builder
      * Add a nested where statement to the query.
      *
      * @param  \Closure $callback
-     * @param  string   $boolean
-     *
+     * @param  string $boolean
      * @return \ApolloPY\SimpleES\Builder
      */
     public function whereNested(Closure $callback, $boolean = 'must')
@@ -229,8 +250,7 @@ class Builder
      * Add a raw where clause to the query.
      *
      * @param \Elastica\Query\AbstractQuery $query
-     * @param string                        $boolean
-     *
+     * @param string $boolean
      * @return \ApolloPY\SimpleES\Builder
      */
     public function whereRaw(\Elastica\Query\AbstractQuery $query, $boolean = 'must')
@@ -245,7 +265,6 @@ class Builder
      * Add a raw or where clause to the query.
      *
      * @param \Elastica\Query\AbstractQuery $query
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereRaw(\Elastica\Query\AbstractQuery $query)
@@ -259,7 +278,6 @@ class Builder
      * @param        $column
      * @param        $value
      * @param string $boolean
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function whereText($column, $value, $boolean = 'must')
@@ -272,7 +290,6 @@ class Builder
      *
      * @param $column
      * @param $value
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereText($column, $value)
@@ -284,9 +301,8 @@ class Builder
      * Add a where between statement to the query.
      *
      * @param  string $column
-     * @param  array  $values
+     * @param  array $values
      * @param  string $boolean
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function whereBetween($column, array $values, $boolean = 'must')
@@ -306,7 +322,6 @@ class Builder
      *
      * @param       $column
      * @param array $values
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function orWhereBetween($column, array $values)
@@ -315,15 +330,41 @@ class Builder
     }
 
     /**
+     * Add a "where not null" clause to the query.
+     *
+     * @param $column
+     * @param  string $boolean
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function whereNotNull($column, $boolean = 'must')
+    {
+        $operator = 'exists';
+
+        $this->wheres[] = compact('operator', 'column', 'boolean');
+
+        return $this;
+    }
+
+    /**
+     * Add a "where null" clause to the query.
+     *
+     * @param $column
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function whereNull($column)
+    {
+        return $this->whereNotNull($column, 'must_not');
+    }
+
+    /**
      * Set the "offset" value of the query.
      *
      * @param  int $value
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function offset($value)
     {
-        $this->offset = max(0, $value);
+        $this->offset = max(0, (int) $value);
 
         return $this;
     }
@@ -332,7 +373,6 @@ class Builder
      * Alias to set the "offset" value of the query.
      *
      * @param  int $value
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function skip($value)
@@ -344,12 +384,11 @@ class Builder
      * Set the "limit" value of the query.
      *
      * @param  int $value
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function limit($value)
     {
-        if ($value > 0) $this->limit = $value;
+        if ($value > 0) $this->limit = (int) $value;
 
         return $this;
     }
@@ -358,7 +397,6 @@ class Builder
      * Alias to set the "limit" value of the query.
      *
      * @param  int $value
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function take($value)
@@ -371,7 +409,6 @@ class Builder
      *
      * @param  int $page
      * @param  int $perPage
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function forPage($page, $perPage = 15)
@@ -384,7 +421,6 @@ class Builder
      *
      * @param  string $column
      * @param  string $direction
-     *
      * @return \ApolloPY\SimpleES\Builder
      */
     public function orderBy($column, $direction = 'asc')
@@ -396,16 +432,45 @@ class Builder
     }
 
     /**
+     * @param string $script
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function orderByScriptScore($script)
+    {
+        $score_script = new \Elastica\Script\Script('script_score');
+        $score_script->setScript($script);
+        $score_script->setLang('expression');
+
+        $this->script = $score_script;
+
+        return $this;
+    }
+
+    /**
      * Execute the query
      *
+     * @param null | array $fields
      * @return \Elastica\ResultSet
      */
-    protected function _get()
+    protected function _get($fields = null)
     {
         $query = new \Elastica\Query();
 
-        if ($this->hasWhere()) {
-            $query->setQuery($this->compileWhere($this->wheres));
+        if ($this->script) {
+            $function_score_query = new \Elastica\Query\FunctionScore();
+            $function_score_query->addScriptScoreFunction($this->script);
+            $function_score_query->setBoostMode(\Elastica\Query\FunctionScore::BOOST_MODE_REPLACE);
+            if ($this->hasWhere()) {
+                $function_score_query->setQuery($this->compileWhere($this->wheres));
+                $query->setQuery($function_score_query);
+            }
+        } else {
+            if ($this->hasWhere()) {
+                $query->setQuery($this->compileWhere($this->wheres));
+            }
+            if ($this->orders) {
+                $query->setSort($this->orders);
+            }
         }
 
         if ($this->offset) {
@@ -416,35 +481,49 @@ class Builder
             $query->setSize($this->limit);
         }
 
-        if ($this->orders) {
-            $query->setSort($this->orders);
+        if ($this->eloquent_name) {
+            $query->setFields([]);
+        } elseif (isset($fields) && $fields !== ['*']) {
+            $query->setFields($fields);
         }
 
-        $client = $this->client->getIndex($this->index);
-        if ($this->type) {
-            $client = $client->getType($this->type);
+        return $this->getConnection()->search($query);
+    }
+
+    /**
+     * @return int
+     */
+    public function count()
+    {
+        $query = new \Elastica\Query();
+
+        if ($this->hasWhere()) {
+            $query->setQuery($this->compileWhere($this->wheres));
         }
 
-        return $client->search($query);
+        return $this->getConnection()->count($query);
     }
 
     /**
      * Execute the query and get the first result.
      *
+     * @param array $columns
      * @return \Elastica\Result | \Illuminate\Database\Eloquent\Model | null
      */
-    public function first()
+    public function first($columns = ['*'])
     {
-        $results = $this->take(1)->_get();
+        $results = $this->take(1)->_get($columns);
         if (count($results->getResults()) <= 0) {
             return null;
         }
 
         $result = $results->getResults()[0];
-        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+        if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                return $model->find($result->getId());
+            if (method_exists($model, 'findFromCache')) {
+                return $model->findFromCache($result->getId());
+            } else {
+                return $model->find($result->getId(), $columns);
             }
         }
 
@@ -454,44 +533,50 @@ class Builder
     /**
      * Execute the query
      *
-     * @return \Elastica\ResultSet | \Illuminate\Database\Eloquent\Collection
+     * @param array $columns
+     * @return \Elastica\ResultSet | Collection
      */
-    public function get()
+    public function get($columns = ['*'])
     {
-        $results = $this->_get();
+        $results = $this->_get($columns);
 
-        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+        if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                $ids = [];
-                foreach ($results->getResults() as $val) {
-                    /* @var $val \Elastica\Result */
-                    $ids[] = $val->getId();
-                }
-
-                if (!$ids) {
-                    return new \Illuminate\Database\Eloquent\Collection();
-                }
-
-                return $model->whereIn($model->getKeyName(), $ids)
-                    ->get()
-                    ->sort($this->build_callback_for_collection_sort($ids))
-                    ->values();
+            $ids = [];
+            foreach ($results->getResults() as $val) {
+                /* @var $val \Elastica\Result */
+                $ids[] = $val->getId();
             }
+
+            if (! $ids) {
+                return new Collection([], $results->getTotalHits());
+            }
+
+            if (method_exists($model, 'findFromCache')) {
+                $items = $model->findFromCache($ids);
+            } else {
+                $items = $model->whereIn($model->getKeyName(), $ids)
+                    ->get($columns)
+                    ->sort($this->build_callback_for_collection_sort($ids));
+            }
+
+            $items = $items->values()->all();
+
+            return new Collection($items, $results->getTotalHits());
         }
 
         return $results;
     }
 
     /**
-     * @param array  $keys
+     * @param array $keys
      * @param string $key_name
-     *
      * @return callable
      */
     protected function build_callback_for_collection_sort(array $keys, $key_name = 'id')
     {
         $keys = array_flip($keys);
+
         return function ($a, $b) use ($keys, $key_name) {
             return $keys[$a->$key_name] - $keys[$b->$key_name];
         };
@@ -501,37 +586,43 @@ class Builder
      * Get a paginator for the "select" statement.
      *
      * @param int $perPage
-     *
-     * @return \Illuminate\Pagination\LengthAwarePaginator
+     * @param array $columns
+     * @param string $pageName
+     * @param null $page
+     * @return Paginator
      */
-    public function paginate($perPage = 15)
+    public function paginate($perPage = 15, $columns = ['*'], $pageName = 'page', $page = null)
     {
-        $page = Paginator::resolveCurrentPage();
-        $results = $this->forPage($page, $perPage)->_get();
+        $page = $page ?: Paginator::resolveCurrentPage($pageName);
+        $results = $this->forPage($page, $perPage)->_get($columns);
 
-        if (!$results->count()) {
-            return new Paginator([], $results->getTotalHits(), $perPage, $page, [
+        if (! $results->count()) {
+            return new Paginator(new Collection(), $results->getTotalHits(), $perPage, $page, [
                 'path' => Paginator::resolveCurrentPath(),
             ]);
         }
 
-        if (!is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+        if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
-            if (is_subclass_of($model, '\Illuminate\Database\Eloquent\Model')) {
-                $ids = [];
-                foreach ($results->getResults() as $val) {
-                    /* @var $val \Elastica\Result */
-                    $ids[] = $val->getId();
-                }
-
-                $_results = $model->whereIn($model->getKeyName(), $ids)
-                    ->get()
-                    ->sort($this->build_callback_for_collection_sort($ids))
-                    ->values();
-                return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
-                    'path' => Paginator::resolveCurrentPath(),
-                ]);
+            $ids = [];
+            foreach ($results->getResults() as $val) {
+                /* @var $val \Elastica\Result */
+                $ids[] = $val->getId();
             }
+
+            if (method_exists($model, 'findFromCache')) {
+                $_results = $model->findFromCache($ids);
+            } else {
+                $_results = $model->whereIn($model->getKeyName(), $ids)
+                    ->get($columns)
+                    ->sort($this->build_callback_for_collection_sort($ids));
+            }
+            $_results = $_results->values();
+
+            return new Paginator($_results, $results->getTotalHits(), $perPage, $page, [
+                'path'     => Paginator::resolveCurrentPath(),
+                'pageName' => $pageName,
+            ]);
         }
 
         return new Paginator($results->getResults(), $results->getTotalHits(), $perPage, $page, [
@@ -549,7 +640,6 @@ class Builder
      * - boolean 与其它条件的关系
      * - query 原生条件
      * - search 递归的 Builder 类
-     *
      * @return \Elastica\Query\AbstractQuery
      */
     protected function compileWhere($wheres)
@@ -576,6 +666,9 @@ class Builder
                 case 'raw':
                     $_query = $val['query'];
                     break;
+                case 'exists':
+                    $_query = new \Elastica\Query\Exists($val['column']);
+                    break;
                 default:
                     throw new \InvalidArgumentException(sprintf('$operator: %s unsupported', $val['operator']));
                     break;
@@ -588,17 +681,16 @@ class Builder
             return $queries[0]['query'];
         }
 
-        $query = new \Elastica\Query\Bool();
-        foreach ($queries as $i => $val) {
-            // The next item in a "chain" of wheres devices the boolean of the
-            // first item. So if we see that there are multiple wheres, we will
-            // use the operator of the next where.
-            if ($i == 0 and count($queries) > 1 and $val['boolean'] == 'must') {
-                $val['boolean'] = $queries[1]['boolean'];
-            }
+        $query = new \Elastica\Query\BoolQuery();
 
+        // 暂时只兼容 ->where()->orWhere() 这一种情况
+        if (count($queries) == 2 && $queries[0]['boolean'] == 'must' && $queries[1]['boolean'] == 'should') {
+            $queries[0]['boolean'] = 'should';
+        }
+
+        foreach ($queries as $i => $val) {
             // should | must | must_not
-            $function_name = 'add' . studly_case($val['boolean']);
+            $function_name = 'add'.studly_case($val['boolean']);
             $query->$function_name($val['query']);
         }
 
@@ -610,7 +702,39 @@ class Builder
      */
     protected function hasWhere()
     {
-        return (bool)count($this->wheres);
+        return (bool) count($this->wheres);
     }
 
+    /**
+     * Call the given model scope on the underlying model.
+     *
+     * @param  string $scope
+     * @param  array $parameters
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    protected function callScope($scope, $parameters)
+    {
+        array_unshift($parameters, $this);
+
+        return call_user_func_array([new $this->eloquent_name, $scope], $parameters) ?: $this;
+    }
+
+    /**
+     * Dynamically handle calls into the query instance.
+     *
+     * @param  string $method
+     * @param  array $parameters
+     * @return mixed
+     */
+    public function __call($method, $parameters)
+    {
+        if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
+            $scope = 'searchScope'.ucfirst($method);
+            if (method_exists($this->eloquent_name, $scope)) {
+                return $this->callScope($scope, $parameters);
+            }
+        }
+
+        throw new \BadMethodCallException('Call to undefined method '.self::class.'::'.$method.'()');
+    }
 }
