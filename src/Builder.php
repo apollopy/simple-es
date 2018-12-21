@@ -449,10 +449,10 @@ class Builder
     /**
      * Execute the query
      *
-     * @param null | array $fields
+     * @param array $columns
      * @return \Elastica\ResultSet
      */
-    protected function _get($fields = null)
+    protected function _get($columns = ['*'])
     {
         $query = new \Elastica\Query();
 
@@ -482,9 +482,9 @@ class Builder
         }
 
         if ($this->eloquent_name) {
-            $query->setFields([]);
-        } elseif (isset($fields) && $fields !== ['*']) {
-            $query->setFields($fields);
+            $query->setSource(false);
+        } else {
+            $query->setSource($columns);
         }
 
         return $this->getConnection()->search($query);
