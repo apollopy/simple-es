@@ -482,9 +482,9 @@ class Builder
         }
 
         if ($this->eloquent_name) {
-            $query->setFields([]);
+            $query->setStoredFields([]);
         } elseif (isset($fields) && $fields !== ['*']) {
-            $query->setFields($fields);
+            $query->setStoredFields($fields);
         }
 
         return $this->getConnection()->search($query);
