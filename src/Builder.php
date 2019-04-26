@@ -677,7 +677,7 @@ class Builder
             $queries[] = ['query' => $_query, 'boolean' => $val['boolean']];
         }
 
-        if (1 == count($queries)) {
+        if (1 == count($queries) && $queries[0]['boolean'] != 'must_not') {
             return $queries[0]['query'];
         }
 
