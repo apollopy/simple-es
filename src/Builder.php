@@ -434,6 +434,7 @@ class Builder
     /**
      * @param string $script
      * @return \ApolloPY\SimpleES\Builder
+     * @deprecated use setScriptScore instead
      */
     public function orderByScriptScore($script)
     {
@@ -442,6 +443,19 @@ class Builder
         $score_script->setLang('expression');
 
         $this->script = $score_script;
+
+        return $this;
+    }
+
+    /**
+     * set a custom script to score documents
+     *
+     * @param \Elastica\Script\Script $script
+     * @return Builder
+     */
+    public function setScriptScore(\Elastica\Script\Script $script)
+    {
+        $this->script = $script;
 
         return $this;
     }
