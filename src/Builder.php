@@ -25,6 +25,13 @@ class Builder
     protected $eloquent_name;
 
     /**
+     * The Eloquent ID resolver for \Elastica\Result
+     *
+     * @var Closure
+     */
+    protected $eloquent_id_resolver;
+
+    /**
      * The index name
      *
      * @var string
@@ -108,6 +115,19 @@ class Builder
     public function setEloquentName($model_name = null)
     {
         $this->eloquent_name = $model_name;
+
+        return $this;
+    }
+
+    /**
+     * Set eloquent id resolver
+     *
+     * @param Closure $resolver
+     * @return \ApolloPY\SimpleES\Builder
+     */
+    public function setEloquentIdResolver(Closure $resolver)
+    {
+        $this->eloquent_id_resolver = $resolver;
 
         return $this;
     }
@@ -505,6 +525,19 @@ class Builder
     }
 
     /**
+     * @param \Elastica\Result $result
+     * @return mixed
+     */
+    protected function resolveEloquentId(\Elastica\Result $result)
+    {
+        if (isset($this->eloquent_id_resolver)) {
+            return call_user_func($this->eloquent_id_resolver, $result);
+        }
+
+        return $result->getId();
+    }
+
+    /**
      * @return int
      */
     public function count()
@@ -535,9 +568,9 @@ class Builder
         if (! is_null($this->eloquent_name) && class_exists($this->eloquent_name)) {
             $model = new $this->eloquent_name();
             if (method_exists($model, 'findFromCache')) {
-                return $model->findFromCache($result->getId());
+                return $model->findFromCache($this->resolveEloquentId($result));
             } else {
-                return $model->find($result->getId(), $columns);
+                return $model->find($this->resolveEloquentId($result), $columns);
             }
         }
 
@@ -559,7 +592,7 @@ class Builder
             $ids = [];
             foreach ($results->getResults() as $val) {
                 /* @var $val \Elastica\Result */
-                $ids[] = $val->getId();
+                $ids[] = $this->resolveEloquentId($val);
             }
 
             if (! $ids) {
@@ -621,7 +654,7 @@ class Builder
             $ids = [];
             foreach ($results->getResults() as $val) {
                 /* @var $val \Elastica\Result */
-                $ids[] = $val->getId();
+                $ids[] = $this->resolveEloquentId($val);
             }
 
             if (method_exists($model, 'findFromCache')) {
